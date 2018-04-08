@@ -2,50 +2,28 @@ author = 'MSteger'
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn import metrics, model_selection
+import os
+from sklearn import metrics, model_selection, ensemble
+from functools import partial
 
-def create_cv(Y, folds=2):
-    cv = list(model_selection.cross_validation.StratifiedKFold(Y, n_folds=folds, shuffle=True, random_state=seed))
-    return cv
-
-def split_data_cv(Y, x, cv, i):
-    x_train, Y_train, x_test, Y_test = x.ix[cv[i][0]], Y[cv[i][0]], x.ix[cv[i][1]], Y[cv[i][1]]
-    return Y_train, x_train, Y_test, x_test
-
-def train_eval(model, Y_train, x_train, Y_test=None, x_test=None):
-    model.fit(x_train, Y_train)
-    if x_test is not None:
-        Yhat = model.predict_proba(x_test)[:, 1]
-        score = metrics.roc_auc_score(Y_test, Yhat)
-        print 'out-of-sample metric', score
-        return Yhat, score
-    else:
-        return model
-
-def mcc_treshold(Y, Yhat, grid=10, plot=False):
+def mcc_treshold(Y, Yhat, grid=10):
+    Yhat = Yhat[:, 1]
     thresholds = np.linspace(0.99, 0.99999, grid)
-    print 'training Yhat stats: '
-    print 'Yhat min', Yhat.min(), 'Yhat max:', Yhat.max(), 'Mean', Yhat.mean()
     mcc = np.array([metrics.matthews_corrcoef(Y, (Yhat > np.percentile(Yhat, t * 100)).astype(int)) for t in thresholds])
-    if plot:
-        plt.plot(thresholds, mcc)
-    best_threshold = thresholds[mcc.argmax()]
-    print 'best threshold', best_threshold, 'gives MCC', mcc.max()
-    return best_threshold, mcc.max()
-
-
-def run_cv(Y, folds, params, grid=100, plot=False):
-    cv = create_cv(Y, folds=folds)
-    Yhat, score = np.ones(Y.shape), np.ones(folds)
-    for i in range(folds):
-        print 'fold', i + 1
-        Yhat[cv[i][1]], score[i] = train_eval(xgb.XGBClassifier(**params), *split_data_cv(Y, x, cv, i))
-    treshold, mcc = mcc_treshold(Y, Yhat, grid=grid, plot=plot)
-    print 'mean out-of-sample score: ', score.mean(), '(+-', score.std(), ')'
-    return Yhat, treshold, mcc, score.mean()
+    return mcc.max()
 
 if __name__ == '__main__':
+    data_folder = r'/home/mks/ownCloud/machine learning/P3/'
     seed = 1337
-    skf = model_selection.
+    folds = 2
+    mcc_grid = 10
+
+    model = ensemble.RandomForestClassifier()
+    X_train, y_train = pd.read_csv(os.path.join(data_folder, 'features_train.csv.gz'), index_col = 0), pd.read_csv(os.path.join(data_folder, 'Y.csv.gz'), usecols = ['Response'])['Response'].astype(np.int8)
+    skf = model_selection.StratifiedKFold(n_splits = folds, shuffle = True, random_state = seed)
+    scorer = metrics.make_scorer(score_func = partial(func = mcc_treshold, grid = mcc_grid), greater_is_better = True, needs_proba = True)
+
+    result = model_selection.cross_val_score(estimator = model, X = X_train, y = y_train, scoring = scorer, cv = skf, n_jobs = 1)
+
+    print 'mean: {} std: {} performance: {}'.format(np.mean(result), np.std(result), result)
     print 'done'
