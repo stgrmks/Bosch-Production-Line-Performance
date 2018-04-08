@@ -84,9 +84,8 @@ def compute_numeric_features(filepaths, features, na_dummy = 6666666):
     train_test['dupe'] = train_test.drop('Id', axis=1).duplicated() * 1
     train_test['hash'] = train_test.drop('Id', axis=1).apply(lambda x: hash(tuple(x)), axis=1)
     train_test['dupe_count'] = train_test.groupby(['hash'])['hash'].transform('count')
-    train_test.drop('hash', axis=1, inplace=True)
 
-    return train_test.drop('Id', axis = 1)
+    return train_test.drop('hash', axis=1)
 
 if __name__ == '__main__':
     data_folder = r'/data/'
