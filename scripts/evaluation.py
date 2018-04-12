@@ -12,7 +12,7 @@ def mcc_treshold(Y, Yhat, grid = 10):
     return mcc.max()
 
 if __name__ == '__main__':
-    data_folder = r'/home/mks/ownCloud/machine learning/P3/'
+    data_folder = r'/data/P3/'
     seed = 1337
     folds = 2
 
